@@ -2,14 +2,11 @@
 { pkgs }:
 let
 
+nodeVersions = ["20" "18"];
 nodejsModule = { lib, config, ... }: with lib;
 let cfg = config.javascript.nodejs;
-versionMap = {
-  "20" = pkgs.nodejs_20;
-  "18" = pkgs.nodejs_18;
-};
 availableVersions = mapAttrsToList (key: _: key) versionMap;
-nodejs = versionMap.${cfg.version};
+nodejs = pkgs.${"nodejs_${cfg.version}"};
 nodepkgs = pkgs.nodePackages.override {
   inherit nodejs;
 };
@@ -24,7 +21,7 @@ in
     version = mkOption {
       type = types.str;
       default = "20";
-      description = "Version of Node.js. Available versions are ${strings.concatStringsSep ", " availableVersions}";
+      description = "Version of Node.js. Available versions are ${strings.concatStringsSep ", " nodeVersions}";
     };
 
     packager = mkOption {
@@ -75,6 +72,34 @@ javaScriptModule = { lib, config, ... }: with lib;
   imports = [nodejsModule bunModule];
 };
 
+typescriptLanguageServerModule = { lib, config, ... }: with lib;
+let
+cfg = config.typescript-language-server;
+nodejsCfg = config.javascript.nodejs;
+nodejs = pkgs.${"nodejs_${nodejsCfg.version}"};
+nodepkgs = pkgs.nodePackages.override {
+  inherit nodejs;
+};
+# if nodejs module is enabled, uses that version of node to run the language server
+ts-lang-server =
+  if nodejsCfg.enabled then
+    nodepkgs.typescript-language-server
+  else
+    pkgs.nodePackages.typescript-language-server;
+in
+{
+  options.typescript-language-server = {
+    enabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
+  };
+
+  config = mkIf cfg.enabled {
+    exePath = ["${ts-lang-server}/bin"];
+  };
+};
+
 upmModule = { lib, ... }: with lib; {
   options = {
     language = mkOption {
@@ -86,8 +111,42 @@ upmModule = { lib, ... }: with lib; {
   };
 };
 
+languageServerModule = { lib, ... }: with lib;
+{
+  options = {
+    name = mkOption {
+      type = types.str;
+      description = lib.mdDoc ''
+        The name of the language server.
+      '';
+    };
+
+    language = mkOption {
+      type = types.str;
+      description = lib.mdDoc ''
+        The language this language server supports.
+      '';
+    };
+
+    extensions = mkOption {
+      type = types.listOf (types.str);
+      default = [ ];
+      description = lib.mdDoc ''
+        A list of file extensions this language server supports.
+      '';
+    };
+
+    start = mkOption {
+      type = commandType;
+      description = lib.mdDoc ''
+        The command to start the language server.
+      '';
+    };
+  };
+};
+
 toplevelModule = { lib, ... }: with lib; {
-  imports = [javaScriptModule];
+  imports = [javaScriptModule typescriptLanguageServerModule];
   options.env = mkOption {
     type = types.attrsOf types.str;
     default = {};
@@ -101,6 +160,13 @@ toplevelModule = { lib, ... }: with lib; {
     default = { };
     description = lib.mdDoc ''
       A set of packager configuration settings for UPM.
+    '';
+  };
+  options.languageServers = mkOption {
+    type = types.attrsOf (types.submodule languageServerModule);
+    default = { };
+    description = lib.mdDoc ''
+      A set language servers provided by the module.
     '';
   };
 };
@@ -137,9 +203,19 @@ myConfig4 = { lib, ... }: {
   };
 };
 
-myBadConfig = { lib, ... }: {
+myConfig5 = { lib, ... }: {
   config.javascript.bun.enabled = true;
   config.javascript.nodejs.enabled = true;
+  # having both nodejs and bun enabled is disallowed!
+};
+
+myConfig6 = { lib, ... }: {
+  config.typescript-language-server.enabled = true;
+};
+
+myConfig7 = { lib, ... }: {
+  config.javascript.nodejs.enabled = true;
+  config.typescript-language-server.enabled = true;
 };
 
 configOutput = (pkgs.lib.evalModules {
