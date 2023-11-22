@@ -145,8 +145,44 @@ languageServerModule = { lib, ... }: with lib;
   };
 };
 
+nodejsToolsBundleModule = { lib, config, ... }: with lib; {
+  options = {
+    bundles.nodejsTools.enabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
+  };
+
+  config = mkIf config.bundles.nodejsTools.enabled {
+    javascript.nodejs.enabled = true;
+    typescript-language-server.enabled = true;
+    # along with other tools you want to include in this bundle
+    # but if you want to configure individual tools within the bundle
+    # you still specify the options within the tool specific sections
+  };
+};
+
+bunToolsBundleModule = { lib, config, ... }: with lib; {
+  options = {
+    bundles.bunTools.enabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
+  };
+
+  config = mkIf config.bundles.bunTools.enabled {
+    javascript.bun.enabled = true;
+    typescript-language-server.enabled = true;
+  };
+};
+
 toplevelModule = { lib, ... }: with lib; {
-  imports = [javaScriptModule typescriptLanguageServerModule];
+  imports = [
+    javaScriptModule
+    typescriptLanguageServerModule
+    nodejsToolsBundleModule
+    bunToolsBundleModule
+  ];
   options.env = mkOption {
     type = types.attrsOf types.str;
     default = {};
@@ -218,10 +254,18 @@ myConfig7 = { lib, ... }: {
   config.typescript-language-server.enabled = true;
 };
 
+myConfig8 = { lib, ... }: {
+  config.bundles.bunTools.enabled = true;
+};
+
+myConfig9 = { lib, ... }: {
+  config.bundles.nodejsTools.enabled = true;
+};
+
 configOutput = (pkgs.lib.evalModules {
     modules = [
       toplevelModule
-      myConfig
+      myConfig9
     ];
   }).config;
 in
