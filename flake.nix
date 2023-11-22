@@ -19,6 +19,7 @@
           default = example4;
 
           example0 = ex ./example0.nix;
+          javascript = ex ./javascript.nix;
           example1 = ex ./example1.nix;
           example2 = ex ./example2.nix;
           example3 = ex ./example3.nix;
