@@ -20,6 +20,7 @@
 
           example0 = ex ./example0.nix;
           javascript = ex ./javascript.nix;
+          javascript-import-based = ex ./javascript-import-based.nix;
           example1 = ex ./example1.nix;
           example2 = ex ./example2.nix;
           example3 = ex ./example3.nix;

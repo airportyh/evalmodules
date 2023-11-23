@@ -1,7 +1,6 @@
 # A hello world for evalModules
 { pkgs }:
 let
-
 nodeVersions = ["20" "18"];
 nodejsModule = { lib, config, ... }: with lib;
 let cfg = config.nodejs;
@@ -13,11 +12,6 @@ nodepkgs = pkgs.nodePackages.override {
 in
   {
   options.nodejs = {
-    enabled = mkOption {
-      type = types.bool;
-      default = false;
-    };
-
     version = mkOption {
       type = types.str;
       default = "20";
@@ -29,15 +23,9 @@ in
       default = "npm";
       description = "Node package manager to use. Available options: npm, yarn, and pnpm";
     };
-
-    # this is not really an option, but a way to tag that this thing supports these languages
-    languages = mkOption {
-      type = types.listOf types.str;
-      default = ["javascript" "typescript"];
-    };
   };
 
-  config = mkIf cfg.enabled {
+  config = {
     exePath = [
       "${nodejs}/bin"
     ]
@@ -52,25 +40,14 @@ in
 
 bunModule = { lib, config, ... }: with lib; {
   options.bun = {
-    enabled = mkOption {
-      type = types.bool;
-      default = false;
-    };
-
     version = mkOption {
       type = types.str;
       default = "1";
       description = "Version of Bun. Available versions are 0.6 and 1";
     };
-
-    # this is not really an option, but a way to tag that this thing supports these languages
-    languages = mkOption {
-      type = types.listOf types.str;
-      default = ["javascript" "typescript"];
-    };
   };
 
-  config = mkIf config.bun.enabled {
+  config = {
     exePath = ["${pkgs.bun}/bin"];
 
     upm.bun = {
@@ -82,27 +59,24 @@ bunModule = { lib, config, ... }: with lib; {
 typescriptLanguageServerModule = { lib, config, ... }: with lib;
 let
 cfg = config.typescript-language-server;
-nodejsCfg = config.nodejs;
-nodejs = pkgs.${"nodejs_${nodejsCfg.version}"};
+defaultNodejsVersion = if builtins.hasAttr "nodejs" config then
+  config.nodejs.version else "20";
+nodejsVersion = cfg.nodejsVersion;
+nodejs = pkgs.${"nodejs_${nodejsVersion}"};
 nodepkgs = pkgs.nodePackages.override {
   inherit nodejs;
 };
-# if nodejs module is enabled, uses that version of node to run the language server
-ts-lang-server =
-  if nodejsCfg.enabled then
-    nodepkgs.typescript-language-server
-  else
-    pkgs.nodePackages.typescript-language-server;
+ts-lang-server = nodepkgs.typescript-language-server;
 in
 {
   options.typescript-language-server = {
-    enabled = mkOption {
-      type = types.bool;
-      default = false;
+    nodejsVersion = mkOption {
+      type = types.str;
+      default = defaultNodejsVersion;
     };
   };
 
-  config = mkIf cfg.enabled {
+  config = {
     exePath = ["${ts-lang-server}/bin"];
 
     languageServers.typescript-language-server = {
@@ -159,44 +133,14 @@ languageServerModule = { lib, ... }: with lib;
 };
 
 nodejsToolsBundleModule = { lib, config, ... }: with lib; {
-  options = {
-    bundles.nodejsTools.enabled = mkOption {
-      type = types.bool;
-      default = false;
-    };
-  };
-
-  config = mkIf config.bundles.nodejsTools.enabled {
-    nodejs.enabled = true;
-    typescript-language-server.enabled = true;
-    # along with other tools you want to include in this bundle
-    # but if you want to configure individual tools within the bundle
-    # you still specify the options within the tool specific sections
-  };
+  imports = [nodejsModule typescriptLanguageServerModule];
 };
 
 bunToolsBundleModule = { lib, config, ... }: with lib; {
-  options = {
-    bundles.bunTools.enabled = mkOption {
-      type = types.bool;
-      default = false;
-    };
-  };
-
-  config = mkIf config.bundles.bunTools.enabled {
-    bun.enabled = true;
-    typescript-language-server.enabled = true;
-  };
+  imports = [bunModule typescriptLanguageServerModule];
 };
 
 toplevelModule = { lib, ... }: with lib; {
-  imports = [
-    nodejsModule
-    bunModule
-    typescriptLanguageServerModule
-    nodejsToolsBundleModule
-    bunToolsBundleModule
-  ];
   options.env = mkOption {
     type = types.attrsOf types.str;
     default = {};
@@ -225,65 +169,88 @@ myConfig = { lib, ... }: {
   config.env = {
     FOO = "BAR";
   };
-  config.nodejs = {
-    enabled = true;
-    version = "18";
-  };
+
+  imports = [nodejsModule];
+
+  config.nodejs.version = "18";
 };
 
 myConfig2 = { lib, ... }: {
+
+  imports = [nodejsModule];
+
   config.nodejs = {
-    enabled = true;
     version = "20";
     packager = "pnpm";
   };
+
 };
 
 myConfig3 = { lib, ... }: {
+  imports = [nodejsModule];
+
   config.nodejs = {
-    enabled = true;
     version = "20";
     packager = "yarn";
   };
 };
 
 myConfig4 = { lib, ... }: {
-  config.bun = {
-    enabled = true;
-  };
+  imports = [bunModule];
 };
 
 myConfig5 = { lib, ... }: {
-  config.bun.enabled = true;
-  config.nodejs.enabled = true;
+  imports = [nodejsModule bunModule];
   # having both nodejs and bun enabled is disallowed!
 };
 
 myConfig6 = { lib, ... }: {
-  config.typescript-language-server.enabled = true;
+  imports = [typescriptLanguageServerModule];
 };
 
 myConfig7 = { lib, ... }: {
   # typescript language server will use the version of node that matches
   # the one in nodejsModule
-  config.nodejs.enabled = true;
-  config.typescript-language-server.enabled = true;
+  imports = [nodejsModule typescriptLanguageServerModule];
+
+  config.nodejs.version = "18";
 };
 
-myConfig8 = { lib, ... }: {
-  config.bundles.bunTools.enabled = true;
+myConfig8 = { lib, ... }: with lib; {
+  # or you can specify the version for both
+  imports = [nodejsModule typescriptLanguageServerModule];
+
+  config.nodejs.version = "18";
+  config.typescript-language-server.nodejsVersion = "20";
 };
 
 myConfig9 = { lib, ... }: {
-  config.bundles.nodejsTools.enabled = true;
+  imports = [bunToolsBundleModule];
+};
+
+myConfig10 = { lib, ... }: {
+  imports = [nodejsToolsBundleModule];
+};
+
+myConfig11 = { lib, ... }: {
+  imports = [nodejsToolsBundleModule];
+
+  config.nodejs = {
+    version = "18";
+    packager = "yarn";
+  };
 };
 
 configOutput = (pkgs.lib.evalModules {
     modules = [
       toplevelModule
-      myConfig9
+      myConfig11
     ];
   }).config;
 in
-assert !(configOutput.bun.enabled && configOutput.nodejs.enabled);
+# TODO: prefer to put asserts at module level
+assert !(
+  (builtins.hasAttr "bun" configOutput) && 
+  (builtins.hasAttr "nodejs" configOutput)
+);
 builtins.toJSON configOutput
