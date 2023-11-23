@@ -82,23 +82,25 @@ bunModule = { lib, config, ... }: with lib; {
 typescriptLanguageServerModule = { lib, config, ... }: with lib;
 let
 cfg = config.typescript-language-server;
-nodejsCfg = config.nodejs;
-nodejs = pkgs.${"nodejs_${nodejsCfg.version}"};
+defaultNodejsVersion = if config.nodejs.enabled then
+  config.nodejs.version else "20";
+nodejsVersion = cfg.nodejsVersion;
+nodejs = pkgs.${"nodejs_${nodejsVersion}"};
 nodepkgs = pkgs.nodePackages.override {
   inherit nodejs;
 };
 # if nodejs module is enabled, uses that version of node to run the language server
-ts-lang-server =
-  if nodejsCfg.enabled then
-    nodepkgs.typescript-language-server
-  else
-    pkgs.nodePackages.typescript-language-server;
+ts-lang-server = nodepkgs.typescript-language-server;
 in
 {
   options.typescript-language-server = {
     enabled = mkOption {
       type = types.bool;
       default = false;
+    };
+    nodejsVersion = mkOption {
+      type = types.str;
+      default = defaultNodejsVersion;
     };
   };
 
@@ -268,20 +270,42 @@ myConfig7 = { lib, ... }: {
   # the one in nodejsModule
   config.nodejs.enabled = true;
   config.typescript-language-server.enabled = true;
+
+  config.nodejs.version = "18";
 };
 
 myConfig8 = { lib, ... }: {
-  config.bundles.bunTools.enabled = true;
+  # but you can specify the version for both
+  config.nodejs.enabled = true;
+  config.typescript-language-server.enabled = true;
+
+  config.nodejs.version = "18";
+  config.typescript-language-server.nodejsVersion = "20";
 };
 
 myConfig9 = { lib, ... }: {
+  config.bundles.bunTools.enabled = true;
+};
+
+myConfig10 = { lib, ... }: {
   config.bundles.nodejsTools.enabled = true;
+};
+
+myConfig11 = { lib, ... }: {
+  config.bundles.nodejsTools.enabled = true;
+
+  # You configure the individual tools provided by
+  # a bundle directly. The bundle is not a wrapper
+  config.nodejs = {
+    version = "18";
+    packager = "yarn";
+  };
 };
 
 configOutput = (pkgs.lib.evalModules {
     modules = [
       toplevelModule
-      myConfig9
+      myConfig11
     ];
   }).config;
 in

@@ -23,9 +23,14 @@ in
       default = "npm";
       description = "Node package manager to use. Available options: npm, yarn, and pnpm";
     };
+
+    disabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
   };
 
-  config = {
+  config = mkIf (!cfg.disabled) {
     exePath = [
       "${nodejs}/bin"
     ]
@@ -38,16 +43,23 @@ in
   };
 };
 
-bunModule = { lib, config, ... }: with lib; {
+bunModule = { lib, config, ... }: with lib; 
+let cfg = config.bun;
+in {
   options.bun = {
     version = mkOption {
       type = types.str;
       default = "1";
       description = "Version of Bun. Available versions are 0.6 and 1";
     };
+
+    disabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
   };
 
-  config = {
+  config = mkIf (!cfg.disabled) {
     exePath = ["${pkgs.bun}/bin"];
 
     upm.bun = {
@@ -74,9 +86,14 @@ in
       type = types.str;
       default = defaultNodejsVersion;
     };
+
+    disabled = mkOption {
+      type = types.bool;
+      default = false;
+    };
   };
 
-  config = {
+  config = mkIf (!cfg.disabled) {
     exePath = ["${ts-lang-server}/bin"];
 
     languageServers.typescript-language-server = {
@@ -217,7 +234,7 @@ myConfig7 = { lib, ... }: {
 };
 
 myConfig8 = { lib, ... }: with lib; {
-  # or you can specify the version for both
+  # but you can specify the version for both
   imports = [nodejsModule typescriptLanguageServerModule];
 
   config.nodejs.version = "18";
@@ -235,16 +252,26 @@ myConfig10 = { lib, ... }: {
 myConfig11 = { lib, ... }: {
   imports = [nodejsToolsBundleModule];
 
+  # You configure the individual tools provided by
+  # a bundle directly. The bundle is not a wrapper
   config.nodejs = {
     version = "18";
     packager = "yarn";
   };
 };
 
+myConfig12 = { lib, ... }: {
+  # you can disable individual things if the bundle gave you too much
+  imports = [nodejsToolsBundleModule];
+
+  config.typescript-language-server.disabled = true;
+  config.nodejs.disabled = true;
+};
+
 configOutput = (pkgs.lib.evalModules {
     modules = [
       toplevelModule
-      myConfig11
+      myConfig12
     ];
   }).config;
 in
