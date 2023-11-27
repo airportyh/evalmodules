@@ -31,6 +31,12 @@ in
     };
 
     # this is not really an option, but a way to tag that this thing supports these languages
+    versionsAvailable = mkOption {
+      type = types.listOf types.str;
+      default = nodeVersions;
+      description = "Available versions of Node.js. Do not set these.";
+    };
+
     languages = mkOption {
       type = types.listOf types.str;
       default = ["javascript" "typescript"];
@@ -101,6 +107,13 @@ in
     nodejsVersion = mkOption {
       type = types.str;
       default = defaultNodejsVersion;
+    };
+    nodejsVersionsAvailable = mkOption {
+      type = types.listOf types.str;
+      default = nodeVersions;
+      description = ''
+      List of Node.js versions available. Do not set these.
+      '';
     };
   };
 
@@ -305,7 +318,7 @@ myConfig11 = { lib, ... }: {
 configOutput = (pkgs.lib.evalModules {
     modules = [
       toplevelModule
-      myConfig11
+      myConfig1
     ];
   }).config;
 in
