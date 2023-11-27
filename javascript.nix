@@ -30,13 +30,14 @@ in
       description = "Node package manager to use. Available options: npm, yarn, and pnpm";
     };
 
-    # this is not really an option, but a way to tag that this thing supports these languages
+    # this is not really an option, but a way to specify the available Node.js versions
     versionsAvailable = mkOption {
       type = types.listOf types.str;
       default = nodeVersions;
       description = "Available versions of Node.js. Do not set these.";
     };
 
+    # this is not really an option, but a way to tag that this thing supports these languages
     languages = mkOption {
       type = types.listOf types.str;
       default = ["javascript" "typescript"];
